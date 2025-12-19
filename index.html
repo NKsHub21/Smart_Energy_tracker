@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Persistent Energy Consumption Tracker UI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* --- CSS for UI/UX (Expanded) --- */
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-light: #f8f9fa;
+            --bg-dark: #343a40;
+            --text-dark: #333;
+            --text-light: #fff;
+            --warning-color: #ffc107;
+            --chart-red: #dc3545;
+            --chart-blue: #007bff;
+            --impact-color: #6f42c1; /* New color for environmental impact */
+            --surcharge-color: #ff8c00; /* New color for Surcharge */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: var(--text-light);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f0f4f7;
+        }
+        
+        .form-inline {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap; 
+        }
+
+        .form-inline label, .form-inline p {
+            white-space: nowrap; 
+        }
+
+        .form-inline input, .form-inline button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        /* --- Device List and Input Styles --- */
+        #deviceList, #usageInputTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        #deviceList th, #usageInputTable th {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            padding: 12px;
+            text-align: left;
+        }
+        
+        #deviceList td {
+             padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #usageInputTable td {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        input[type="number"] {
+            width: 65px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        /* --- Button and Alert Styles --- */
+        .action-button {
+            padding: 10px 15px;
+            font-size: 1em;
+            color: var(--text-light);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-add {
+            background-color: var(--primary-color);
+        }
+        .btn-add:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-remove {
+            background-color: var(--danger-color);
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+
+        #generateReportBtn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            background-color: var(--success-color);
+            color: var(--text-light);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+
+        #generateReportBtn:hover {
+            background-color: #1e7e34;
+        }
+
+        .alert-box {
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+        }
+        
+        .alert-info {
+            background-color: #cce5ff;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        /* --- Report Styles --- */
+        #reportSection {
+            margin-top: 30px;
+            border-top: 3px dashed var(--secondary-color);
+            padding-top: 20px;
+        }
+
+        #reportSection h2 {
+            color: var(--secondary-color);
+            text-align: center;
+        }
+
+        .report-summary {
+            display: grid;
+            /* Now 6 columns for all cards */
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background-color: var(--bg-light);
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .summary-card p {
+            font-size: 1em;
+            margin: 5px 0;
+            color: var(--secondary-color);
+        }
+
+        .summary-card strong {
+            font-size: 1.6em;
+            color: var(--primary-color);
+            display: block;
+            margin-top: 5px;
+        }
+        .summary-card.goal-success strong {
+            color: var(--success-color);
+        }
+        .summary-card.goal-failed strong {
+            color: var(--danger-color);
+        }
+        /* Style for the CO2 card */
+        .summary-card.impact strong {
+            color: var(--impact-color);
+        }
+        /* Style for the Surcharge card */
+        .summary-card.surcharge strong {
+            color: var(--surcharge-color);
+        }
+
+
+        .daily-report-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .daily-report-table th, .daily-report-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: right;
+        }
+        .daily-report-table th:first-child, .daily-report-table td:first-child {
+            text-align: left;
+        }
+        .daily-report-table th {
+            background-color: #e9ecef;
+        }
+
+        /* Chart Styling (unchanged) */
+        .chart-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap; 
+        }
+        .chart-box {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100%; 
+            max-width: 45%; 
+            min-width: 300px; 
+        }
+        @media (max-width: 800px) {
+            .chart-box {
+                max-width: 100%; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>⚡ Smart Home Energy Consumption Tracker</h1>
+        
+        <div class="section">
+            <h2>⚙ Configuration & Goals</h2>
+            <div class="form-inline">
+                <label for="costPerKWh">Cost per kWh (e.g., ₹):</label>
+                <input type="number" id="costPerKWh" min="0" step="0.1" value="4" style="width: 100px;">
+                <label for="weeklyEnergyGoal">Weekly Energy Goal (kWh):</label>
+                <input type="number" id="weeklyEnergyGoal" min="0" step="0.1" value="150" style="width: 100px;">
+            </div>
+            
+            <div class="form-inline">
+                <label for="co2Factor">Indian Grid CO₂ Factor (kg $\text{CO}_2$/kWh):</label>
+                <input type="number" id="co2Factor" min="0.01" step="0.01" value="0.75" style="width: 100px;">
+                <p style="margin:0; color:var(--secondary-color);">*Physical mass emitted per kWh.</p>
+            </div>
+            <div class="form-inline">
+                <label for="costPerKgCO2">Cost of Carbon (₹/kg $\text{CO}_2$):</label>
+                <input type="number" id="costPerKgCO2" min="0" step="0.1" value="5.0" style="width: 100px;">
+                <p style="margin:0; color:var(--secondary-color);">*Value used to calculate the Environmental Surcharge in Rupees (₹).</p>
+            </div>
+            <div id="statusAlert" class="alert-box alert-info"></div>
+        </div>
+
+        <div class="section">
+            <h2>1. Device Setup & Power Ratings (W)</h2>
+            <div class="form-inline">
+                <input type="text" id="newDeviceName" placeholder="New Device Name" required>
+                <input type="number" id="newDevicePower" min="1" placeholder="Power in Watts (W)" required>
+                <button id="addDeviceBtn" class="action-button btn-add">Add Device</button>
+            </div>
+            
+            <table id="deviceList">
+                <thead>
+                    <tr>
+                        <th>Device Name</th>
+                        <th>Rated Power (W)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>2. Daily Usage Input (Hours Used per Day)</h2>
+            <p>Input the hours each device was used for each day of the week (0-24).</p>
+            <table id="usageInputTable">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Day 1</th>
+                        <th>Day 2</th>
+                        <th>Day 3</th>
+                        <th>Day 4</th>
+                        <th>Day 5</th>
+                        <th>Day 6</th>
+                        <th>Day 7</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <button id="generateReportBtn">📊 Generate Energy Consumption Report & Save Data</button>
+        
+        <div id="alertBox" class="alert-box alert-danger"></div>
+
+        <div id="reportSection" style="display: none;">
+            <h2>3. Energy Consumption Report (kWh & Cost)</h2>
+
+            <div class="section" style="background-color: #ffffff;">
+                <h2 style="color: var(--primary-color);">📈 Visualization & Trend Analysis</h2>
+                <p style="text-align: center; color: var(--secondary-color);">*A visual breakdown of your weekly consumption patterns.</p>
+                <div class="chart-container">
+                    <div class="chart-box">
+                        <canvas id="dailyConsumptionChart"></canvas>
+                        <p style="text-align: center; font-size: 0.9em; color: var(--secondary-color);">Daily Total Consumption Trend (kWh)</p>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="deviceConsumptionChart"></canvas>
+                        <p style="text-align: center; font-size: 0.9em; color: var(--secondary-color);">Weekly Consumption by Device (kWh)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="report-summary">
+                <div class="summary-card">
+                    <p>Total Weekly Household Consumption (kWh)</p>
+                    <strong id="overallWeeklyTotal">0.000 kWh</strong>
+                </div>
+                <div class="summary-card">
+                    <p>Average Daily Consumption (kWh)</p>
+                    <strong id="averageDailyTotal">0.000 kWh</strong>
+                </div>
+                <div class="summary-card">
+                    <p>Total Weekly Estimated Cost</p>
+                    <strong id="weeklyCostTotal">₹0.00</strong> 
+                </div>
+                <div class="summary-card surcharge">
+                    <p>💲 Weekly Environmental Surcharge</p>
+                    <strong id="co2Surcharge">₹0.00</strong> 
+                </div>
+                <div class="summary-card impact">
+                    <p>🌍 Weekly CO₂ Footprint (Estimated)</p>
+                    <strong id="co2Footprint">0.00 kg</strong>
+                </div>
+                <div class="summary-card" id="goalStatusCard">
+                    <p>Weekly Goal Status (150 kWh)</p>
+                    <strong id="goalProgress">--%</strong>
+                </div>
+            </div>
+
+            <h3>Per-Device Weekly Consumption & Cost</h3>
+            <table id="perDeviceWeeklyTable" class="daily-report-table">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Weekly Total (kWh)</th>
+                        <th>Weekly Cost</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h3>Daily Household Breakdown</h3>
+            <div id="dailyReportsContainer">
+                </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- JAVASCRIPT LOGIC (MODIFIED FOR C++ BACKEND) ---
+
+        const DAILY_THRESHOLD_KWH = 50.0;
+        const DAYS_IN_WEEK = 7;
+        const LS_DEVICES_KEY = 'energyTrackerDevices';
+        const LS_USAGE_KEY = 'energyTrackerUsage';
+        const LS_GOAL_KEY = 'weeklyEnergyGoal'; 
+        const LS_CO2_FACTOR_KEY = 'co2EmissionFactor'; 
+        const LS_CARBON_COST_KEY = 'costPerKgCO2'; // Key for Carbon Cost (₹)
+        
+        let dailyChartInstance = null;
+        let deviceChartInstance = null;
+        
+        // Initial Default Devices
+        let DEVICES = {
+            "Fan": { power_watts: 75.0 },
+            "LED Bulb": { power_watts: 15.0 },
+            "TV": { power_watts: 150.0 },
+            "Refrigerator": { power_watts: 200.0 },
+            "Gaming PC": { power_watts: 500.0 }
+        };
+
+        let usageData = {}; 
+        
+        // --- Helper Function ---
+        const computeKWh = (power_watts, hours_used) => {
+            return (power_watts * hours_used) / 1000.0;
+        };
+        
+        const saveToLocalStorage = () => {
+            localStorage.setItem(LS_DEVICES_KEY, JSON.stringify(DEVICES));
+            localStorage.setItem(LS_USAGE_KEY, JSON.stringify(usageData));
+            
+            const goalValue = document.getElementById('weeklyEnergyGoal').value;
+            localStorage.setItem(LS_GOAL_KEY, goalValue);
+            
+            const co2FactorValue = document.getElementById('co2Factor').value;
+            localStorage.setItem(LS_CO2_FACTOR_KEY, co2FactorValue);
+            
+            const carbonCostValue = document.getElementById('costPerKgCO2').value;
+            localStorage.setItem(LS_CARBON_COST_KEY, carbonCostValue);
+
+            const costPerKWhValue = document.getElementById('costPerKWh').value;
+            localStorage.setItem('costPerKWh', costPerKWhValue);
+
+            displayStatus("Data saved successfully to your browser's local storage!", 'info');
+        };
+        
+        const displayStatus = (message, type) => {
+            const statusAlert = document.getElementById('statusAlert');
+            // Safely check for statusAlert element
+            if (statusAlert) {
+                statusAlert.className = `alert-box alert-${type}`;
+                statusAlert.textContent = message;
+                statusAlert.style.display = 'block';
+                setTimeout(() => {
+                    statusAlert.style.display = 'none';
+                }, 3000);
+            }
+        };
+        
+        // --- FEATURE 1 & 2: Local Storage Load (FIXED) ---
+
+        const loadFromLocalStorage = () => {
+            const storedDevices = localStorage.getItem(LS_DEVICES_KEY);
+            const storedUsage = localStorage.getItem(LS_USAGE_KEY);
+            
+            // CRITICAL FIX: Get element references FIRST
+            const costInput = document.getElementById('costPerKWh');
+            const goalInput = document.getElementById('weeklyEnergyGoal');
+            const co2Input = document.getElementById('co2Factor'); 
+            const carbonCostInput = document.getElementById('costPerKgCO2');
+
+            // Load Devices
+            if (storedDevices) {
+                try { DEVICES = JSON.parse(storedDevices); } catch (e) { console.error("Error parsing stored devices:", e); }
+            }
+            
+            // Load Usage
+            if (storedUsage) {
+                try {
+                    const parsedUsage = JSON.parse(storedUsage);
+                    for (const name in parsedUsage) {
+                        if (DEVICES[name]) { usageData[name] = parsedUsage[name]; }
+                    }
+                } catch (e) { console.error("Error parsing stored usage:", e); }
+            }
+
+            // Initialize/Seed Data if empty
+            if (Object.keys(usageData).length === 0) {
+                for (const name in DEVICES) { usageData[name] = new Array(DAYS_IN_WEEK).fill(0); }
+                if (storedDevices === null && storedUsage === null) { seedInitialData(); }
+            }
+            
+            // Re-check and initialize usage data for any new/missing devices
+            for (const name in DEVICES) {
+                if (!usageData[name]) { usageData[name] = new Array(DAYS_IN_WEEK).fill(0); }
+            }
+            
+            // Apply loaded configuration values (SAFELY checking INPUTS before setting .value)
+            const storedGoal = localStorage.getItem(LS_GOAL_KEY);
+            if (storedGoal && goalInput) {
+                goalInput.value = storedGoal;
+            }
+            
+            const storedCo2Factor = localStorage.getItem(LS_CO2_FACTOR_KEY);
+            if (storedCo2Factor && co2Input) {
+                co2Input.value = storedCo2Factor;
+            }
+
+            const storedCarbonCost = localStorage.getItem(LS_CARBON_COST_KEY);
+            if (storedCarbonCost && carbonCostInput) {
+                carbonCostInput.value = storedCarbonCost;
+            }
+            
+            const storedCost = localStorage.getItem('costPerKWh');
+            if (storedCost && costInput) {
+                costInput.value = storedCost;
+            }
+
+
+            initializeDeviceList();
+            initializeUsageInput();
+            
+            if (storedDevices || storedUsage) {
+                 displayStatus("Energy data loaded successfully from previous session.", 'info');
+            }
+        };
+        
+        // --- UI Initialization Functions (FIXED for Null check) ---
+        
+        const initializeDeviceList = () => {
+            // CRITICAL FIX: Explicitly check for null on the selector result
+            const listBody = document.querySelector('#deviceList tbody');
+            if (!listBody) {
+                console.error("Initialization Error: Could not find #deviceList tbody.");
+                return; 
+            }
+            
+            listBody.innerHTML = ''; 
+
+            for (const name in DEVICES) {
+                const row = listBody.insertRow();
+                row.insertCell().textContent = name;
+                row.insertCell().textContent = DEVICES[name].power_watts.toFixed(1);
+                
+                const actionCell = row.insertCell();
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.className = 'action-button btn-remove';
+                removeBtn.addEventListener('click', () => removeDevice(name));
+                actionCell.appendChild(removeBtn);
+            }
+        };
+
+        const initializeUsageInput = () => {
+            // CRITICAL FIX: Explicitly check for null on the selector result
+            const inputBody = document.querySelector('#usageInputTable tbody');
+             if (!inputBody) {
+                console.error("Initialization Error: Could not find #usageInputTable tbody.");
+                return;
+            }
+            
+            inputBody.innerHTML = ''; 
+
+            for (const name in DEVICES) {
+                if (!usageData[name] || usageData[name].length !== DAYS_IN_WEEK) {
+                    usageData[name] = new Array(DAYS_IN_WEEK).fill(0);
+                }
+
+                const row = inputBody.insertRow();
+                row.insertCell().textContent = name; 
+
+                for (let day = 0; day < DAYS_IN_WEEK; day++) {
+                    const cell = row.insertCell();
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = '0';
+                    input.max = '24';
+                    input.step = '0.1';
+                    input.value = usageData[name][day].toFixed(1);
+
+                    input.addEventListener('change', (e) => {
+                        const hours = parseFloat(e.target.value) || 0;
+                        usageData[name][day] = Math.min(Math.max(0, hours), 24);
+                        e.target.value = usageData[name][day].toFixed(1); 
+                    });
+
+                    cell.appendChild(input);
+                }
+            }
+        };
+        
+        const addDevice = () => {
+            const nameInput = document.getElementById('newDeviceName');
+            const powerInput = document.getElementById('newDevicePower');
+            const name = nameInput.value.trim();
+            const power = parseFloat(powerInput.value);
+
+            if (!name || isNaN(power) || power <= 0) {
+                alert("Please enter a valid device name and a positive power rating.");
+                return;
+            }
+            if (DEVICES[name]) {
+                alert(`Device "${name}" already exists. Use a unique name.`);
+                return;
+            }
+
+            DEVICES[name] = { power_watts: power };
+            usageData[name] = new Array(DAYS_IN_WEEK).fill(0); 
+            
+            nameInput.value = '';
+            powerInput.value = '';
+            
+            initializeDeviceList();
+            initializeUsageInput();
+            saveToLocalStorage();
+        };
+        
+        const removeDevice = (name) => {
+             if (confirm(`Are you sure you want to remove the device: ${name}? This will clear its usage data.`)) {
+                 delete DEVICES[name];
+                 delete usageData[name];
+                 initializeDeviceList();
+                 initializeUsageInput();
+                 saveToLocalStorage();
+            }
+        };
+
+        const seedInitialData = () => {
+            const seedValues = {
+                "Fan": [8, 12, 6, 6, 6, 6, 6],
+                "LED Bulb": [6, 10, 5, 5, 5, 5, 5],
+                "TV": [3, 8, 2, 2, 2, 2, 2],
+                "Refrigerator": [24, 24, 24, 24, 24, 24, 24],
+                "Gaming PC": [0, 10, 1, 1, 1, 1, 1]
+            };
+            
+            for(const name in seedValues) {
+                 if (usageData[name]) {
+                     usageData[name] = seedValues[name];
+                 }
+            }
+        };
+
+        // --- Visualization Logic (unchanged) ---
+        
+        const generateCharts = (dailyTotals, deviceTotals) => {
+            const dailyCtx = document.getElementById('dailyConsumptionChart').getContext('2d');
+            const deviceCtx = document.getElementById('deviceConsumptionChart').getContext('2d');
+            
+            if (dailyChartInstance) { dailyChartInstance.destroy(); }
+            dailyChartInstance = new Chart(dailyCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
+                    datasets: [{
+                        label: 'Total kWh Consumed',
+                        data: dailyTotals,
+                        backgroundColor: 'rgba(0, 123, 255, 0.5)', 
+                        borderColor: 'var(--primary-color)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Energy (kWh)' } } }
+                }
+            });
+
+            if (deviceChartInstance) { deviceChartInstance.destroy(); }
+            deviceChartInstance = new Chart(deviceCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(deviceTotals),
+                    datasets: [{
+                        label: 'Weekly kWh Consumed',
+                        data: Object.values(deviceTotals),
+                        backgroundColor: [
+                            'var(--chart-blue)', 
+                            'var(--success-color)', 
+                            'var(--danger-color)', 
+                            'var(--warning-color)', 
+                            'var(--secondary-color)', 
+                            '#6f42c1', 
+                            '#fd7e14' 
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', 
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, title: { display: true, text: 'Energy (kWh)' } } }
+                }
+            });
+        };
+        
+        // ------------------------------------------------------------------
+        // NEW FUNCTION: Renders the report using data received from the C++ backend
+        // ------------------------------------------------------------------
+        const renderReport = (reportData) => {
+            const weeklyGoalKWh = parseFloat(document.getElementById('weeklyEnergyGoal').value) || 0;
+            const perDeviceBody = document.querySelector('#perDeviceWeeklyTable tbody');
+            const goalStatusCard = document.getElementById('goalStatusCard');
+            const co2FootprintElement = document.getElementById('co2Footprint'); 
+            const co2SurchargeElement = document.getElementById('co2Surcharge');
+            const alertBox = document.getElementById('alertBox');
+            const dailyReportsContainer = document.getElementById('dailyReportsContainer');
+            
+            // Clear previous results
+            if (perDeviceBody) perDeviceBody.innerHTML = '';
+            
+            if (dailyReportsContainer) dailyReportsContainer.innerHTML = ''; 
+            if (alertBox) alertBox.style.display = 'none';
+
+
+            // 1. Weekly Per-Device Summary and Table 
+            let deviceChartData = {};
+            if (perDeviceBody) {
+                for (const item of reportData.perDeviceWeeklySummary) {
+                    deviceChartData[item.device] = item.kwh; 
+                    
+                    const row = perDeviceBody.insertRow();
+                    row.insertCell().textContent = item.device;
+                    row.insertCell().textContent = item.kwh.toFixed(3);
+                    row.insertCell().textContent = `₹${item.cost.toFixed(2)}`;
+                }
+            }
+            
+            // 2. DAILY BREAKDOWN RENDERING
+            if (reportData.dailyBreakdown && dailyReportsContainer) {
+                 for (const dayData of reportData.dailyBreakdown) {
+                    const dayNumber = dayData.day_number;
+                    const dailyKWh = dayData.dailyHouseholdTotalKWh;
+                    const dailyCost = dayData.dailyCostTotal;
+                    
+                    const dayHeader = document.createElement('h4');
+                    dayHeader.textContent = `Consumption - Day ${dayNumber}`;
+                    dailyReportsContainer.appendChild(dayHeader);
+                    
+                    const table = document.createElement('table');
+                    table.className = 'daily-report-table';
+                    table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Power (W)</th>
+                                <th>Hours Used (h)</th>
+                                <th>Energy (kWh)</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    `;
+                    const tableBody = table.querySelector('tbody');
+
+                    for (const device of dayData.deviceBreakdown) {
+                        const row = tableBody.insertRow();
+                        row.insertCell().textContent = device.device;
+                        row.insertCell().textContent = device.power_w.toFixed(1);
+                        row.insertCell().textContent = device.hours_h.toFixed(1);
+                        row.insertCell().textContent = device.kwh.toFixed(3);
+                        row.insertCell().textContent = `₹${device.cost.toFixed(2)}`;
+                    }
+
+                    // Append Daily Total Row
+                    const totalRow = tableBody.insertRow();
+                    totalRow.style.fontWeight = 'bold';
+                    totalRow.style.backgroundColor = '#fff3cd';
+                    totalRow.insertCell().textContent = 'DAILY TOTAL';
+                    totalRow.insertCell().setAttribute('colspan', '3');
+                    totalRow.insertCell().textContent = dailyKWh.toFixed(3);
+                    totalRow.insertCell().textContent = `₹${dailyCost.toFixed(2)}`;
+                    
+                    dailyReportsContainer.appendChild(table);
+                }
+            }
+
+
+            // 3. Overall Totals
+            if (document.getElementById('overallWeeklyTotal')) 
+                document.getElementById('overallWeeklyTotal').textContent = reportData.overallWeeklyTotalKWh.toFixed(3) + ' kWh';
+            if (document.getElementById('averageDailyTotal'))
+                document.getElementById('averageDailyTotal').textContent = reportData.averageDailyTotalKWh.toFixed(3) + ' kWh';
+            if (document.getElementById('weeklyCostTotal'))
+                document.getElementById('weeklyCostTotal').textContent = `₹${reportData.weeklyCostTotal.toFixed(2)}`;
+            if (co2FootprintElement)
+                co2FootprintElement.textContent = reportData.co2Footprint.toFixed(2) + ' kg';
+            if (co2SurchargeElement)
+                co2SurchargeElement.textContent = `₹${reportData.co2Surcharge.toFixed(2)}`;
+            
+            // 4. Goal Status (Using text calculated in C++)
+            const goalProgressElement = document.getElementById('goalProgress');
+            const goalLabelElement = goalStatusCard ? goalStatusCard.querySelector('p') : null;
+
+            if (goalProgressElement) goalProgressElement.textContent = reportData.goalStatusText;
+            
+            if (weeklyGoalKWh > 0) {
+                if (goalLabelElement) goalLabelElement.textContent = `Weekly Goal (${weeklyGoalKWh.toFixed(1)} kWh)`;
+                if (goalStatusCard) {
+                    if (reportData.overallWeeklyTotalKWh <= weeklyGoalKWh) {
+                        goalStatusCard.className = 'summary-card goal-success';
+                    } else {
+                        goalStatusCard.className = 'summary-card goal-failed';
+                    }
+                }
+            } else {
+                if (goalProgressElement) goalProgressElement.textContent = 'N/A';
+                if (goalLabelElement) goalLabelElement.textContent = `Weekly Goal (Not Set)`;
+                if (goalStatusCard) goalStatusCard.className = 'summary-card';
+            }
+
+
+            // 5. Display Alert Box (Daily Threshold)
+            if (reportData.alertDays.length > 0 && alertBox) {
+                alertBox.textContent = `🛑 ALERT: The consumption threshold (${DAILY_THRESHOLD_KWH} kWh) was crossed on the following day(s): ${reportData.alertDays.join(', ')}. Please review heavy usage devices!`;
+                alertBox.style.display = 'block';
+            }
+
+            // 6. Generate Charts
+            generateCharts(reportData.dailyTotalsKWh, deviceChartData);
+
+            if (document.getElementById('reportSection'))
+                document.getElementById('reportSection').style.display = 'block';
+        };
+        
+        // ------------------------------------------------------------------
+        // MODIFIED FUNCTION: API Call to C++ Backend
+        // ------------------------------------------------------------------
+        const generateReport = async () => {
+            // 1. Save current inputs
+            saveToLocalStorage();
+
+            // 2. Gather ALL input data needed by the C++ backend
+            const requestData = {
+                devices: DEVICES,
+                usage: usageData,
+                configs: {
+                    costPerKWh: parseFloat(document.getElementById('costPerKWh').value) || 0,
+                    weeklyGoalKWh: parseFloat(document.getElementById('weeklyEnergyGoal').value) || 0,
+                    co2Factor: parseFloat(document.getElementById('co2Factor').value) || 0,
+                    costPerKgCO2: parseFloat(document.getElementById('costPerKgCO2').value) || 0
+                }
+            };
+            
+            const alertBox = document.getElementById('alertBox');
+            if (alertBox) alertBox.style.display = 'none';
+
+            try {
+                // 3. Send data to the backend wrapper (Flask)
+                const response = await fetch('http://127.0.0.1:5000/api/calculate-energy', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const responseData = await response.json(); 
+
+                if (!response.ok) {
+                    // Handle HTTP error (e.g., 500 from server)
+                    const errorDetails = responseData.details || responseData.error || 'Unknown server error.';
+                    throw new Error(`Calculation failed on server: ${errorDetails}`);
+                }
+
+                // 4. Receive the calculated report from the C++ backend and render
+                renderReport(responseData); 
+
+            } catch (error) {
+                console.error("Error communicating with the backend:", error);
+                
+                if (alertBox) {
+                   alertBox.textContent = `🛑 ERROR: Could not connect to the C++ backend service. Is the Flask server running on port 5000? Details: ${error.message}`;
+                   alertBox.style.display = 'block';
+                }
+            }
+        };
+
+        // --- Event Listeners and Initial Load (CRITICAL FIX APPLIED HERE) ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Use a zero-delay timeout to allow the browser to complete DOM rendering
+            // before running the initialization logic that failed earlier.
+            setTimeout(() => {
+                loadFromLocalStorage();
+                
+                // Check elements before adding listeners
+                if (document.getElementById('addDeviceBtn'))
+                    document.getElementById('addDeviceBtn').addEventListener('click', addDevice);
+                
+                if (document.getElementById('generateReportBtn'))
+                    document.getElementById('generateReportBtn').addEventListener('click', generateReport);
+            }, 0); 
+        });
+
+    </script>
+</body>
+</html>
