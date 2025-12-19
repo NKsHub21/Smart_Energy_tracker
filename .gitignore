@@ -1,0 +1,17 @@
+# Compiled C++ Executables
+*.exe
+energy_tracker
+
+# Python temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment files
+.env
+venv/
+env/
+
+# OS specific files
+.DS_Store
+Thumbs.db
